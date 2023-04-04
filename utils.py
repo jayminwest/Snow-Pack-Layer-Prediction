@@ -12,6 +12,7 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
+import psycopg2
 
 def snowpilot_xml_to_dict(fname):
     """
@@ -71,3 +72,46 @@ def scrape_avalanche_data(url, location):
 
     date_risks = pd.DataFrame(date_risks, columns=['time', 'risk'])
     return date_risks
+
+def csv_to_postgres(file):
+    """
+    Converts the csv files to a postgres database.
+    """
+    conn = psycopg2.connect("dbname='snowpackprediction' user='jaymin' host='localhost' password='password'")
+    # ['temp', 'dwpt', 'rhum', 'prcp', 'wdir', 'wspd', 'pres', 'coco']]
+    conn.autocommit = True
+    cursor = conn.cursor()
+
+    sql0 = """DROP TABLE IF EXISTS weather_data;"""
+
+    cursor.execute(sql0)
+
+    sql = """CREATE TABLE weather_data (
+        time timestamp,
+        temp float,
+        dwpt float,
+        rhum float,
+        prcp float,
+        wdir float,
+        wspd float,
+        pres float,
+        coco float,
+        risk integer
+        );
+        """
+    
+    cursor.execute(sql)
+
+    sql2 = """\COPY weather_data FROM '%s' DELIMITER ',' CSV HEADER;"""%(file)
+
+    cursor.execute(sql2)
+
+    sql3 = """select * from weather_data;"""
+
+    cursor.execute(sql3)
+
+    for i in cursor.fetchall():
+        print(i)
+    
+    conn.commit()
+    conn.close()
