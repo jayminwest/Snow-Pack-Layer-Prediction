@@ -12,7 +12,7 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
-import psycopg2
+import psycopg2, csv
 
 def snowpilot_xml_to_dict(fname):
     """
@@ -71,6 +71,7 @@ def scrape_avalanche_data(url, location):
     browser.quit()
 
     date_risks = pd.DataFrame(date_risks, columns=['time', 'risk'])
+    
     return date_risks
 
 def csv_to_postgres(file):
@@ -87,7 +88,7 @@ def csv_to_postgres(file):
     cursor.execute(sql0)
 
     sql = """CREATE TABLE weather_data (
-        time timestamp,
+        time varchar(20),
         temp float,
         dwpt float,
         rhum float,
@@ -102,16 +103,27 @@ def csv_to_postgres(file):
     
     cursor.execute(sql)
 
-    sql2 = """\COPY weather_data FROM '%s' DELIMITER ',' CSV HEADER;"""%(file)
+    # f = open(file, 'r')
+    # data = list(csv.reader(f, delimiter=','))
+    # f.close()
 
-    cursor.execute(sql2)
+    with open(file, 'r') as f:
+        next(f)
+        for line in f:
+            list = line.split(',')
+            print(list[1:])
+            # line = str(list[1:])
+            line = ','.join(list[1:])
+            sql2 = """INSERT INTO weather_data VALUES (%s);"""%(line)
+            # sql2 = """INSERT INTO weather_data VALUES ;"""%(list)
+            cursor.execute(sql2)
 
-    sql3 = """select * from weather_data;"""
+    # sql3 = """select * from weather_data;"""
 
-    cursor.execute(sql3)
+    # cursor.execute(sql3)
 
-    for i in cursor.fetchall():
-        print(i)
+    # for i in cursor.fetchall():
+        # print(i)
     
     conn.commit()
     conn.close()
