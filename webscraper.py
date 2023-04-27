@@ -39,6 +39,17 @@ class Webscraper():
         """
         Scrapes the individual report pages for all of the text within the report.
         """
+        loaded = False
+        seconds_waited = 0
+        while loaded is False or seconds_waited > 10:
+            try:
+                above_treeline_risk = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")
+                loaded = True
+            except:
+                time.sleep(1)
+                seconds_waited += 1
+        if seconds_waited >= 10:
+            return [None, None, None, None, None, None]
         # Scraping the risk data:
         above_treeline_risk = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")
         above_treeline_risk = above_treeline_risk.text
@@ -53,26 +64,16 @@ class Webscraper():
         bottom_line = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[3]")
         bottom_line_text = bottom_line.text
 
-        # Gettting the avalanche problems:
-        # Find all the "AVALANCHE PROBLEM TYPE #" headers
-        avalanche_problem = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[2]/div[3]")
-        avalanche_problem_text = avalanche_problem.text
-
-        problem_type_headers = self.browser.find_elements(By.XPATH, "//span[@class='nac-problem nac-mb-4 nac-divider']")
-        print(len(problem_type_headers))
-        # Loop through each header, get the paragraph of text under it, and print it
+        # Gettting the avalanche problems text:
+        problem_type_headers = self.browser.find_elements(By.CLASS_NAME, 'nac-problem')
+        problem_type_text = ""
         for header in problem_type_headers:
-            # Find the next sibling element (which should be the paragraph of text)
-            paragraph = header.find_element(By.XPATH, "following-sibling::p[1]")
-            # Print the text of the paragraph
-            print("############")
-            print(paragraph.text)
-
+            problem_type_text += header.find_element(By.CLASS_NAME, "nac-tinymce").text
 
         forecast_discussion = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[3]")
         forecast_discussion_text = forecast_discussion.text
 
-        return [above_treeline_risk, near_treeline_risk, below_treeline_risk, bottom_line_text, avalanche_problem_text, forecast_discussion_text]
+        return [above_treeline_risk, near_treeline_risk, below_treeline_risk, bottom_line_text, problem_type_text, forecast_discussion_text]
     
     def scrape_daily_reports(self):
         """
@@ -81,6 +82,13 @@ class Webscraper():
         """  
         reports_by_date = []      
         while True:
+            loaded = False
+            while loaded is False:
+                try: 
+                    table = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[1]")
+                    loaded = True
+                except:
+                    time.sleep(1)
             # Getting the table:
             table = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[1]")
             rows = table.find_elements(By.TAG_NAME, "tr")
@@ -98,7 +106,6 @@ class Webscraper():
                 
                 # Getting the report data:
                 link.click()
-                time.sleep(2) # wait for page to load
 
                 report_data = self.scrape_report_page()
                 report_data.insert(0, new_date)
@@ -109,7 +116,6 @@ class Webscraper():
 
                 self.browser.back()
                 self.to_csv(pd.DataFrame(reports_by_date))
-                time.sleep(2)
             
             # Finding the "next page" button:
             button = self.browser.find_element(By.CLASS_NAME, "VuePagination__pagination li.VuePagination__pagination-item.nac-html-li.nac-page-item.VuePagination__pagination-item-next-page")  # add 1 to exclude "previous" button
@@ -119,7 +125,7 @@ class Webscraper():
                 break
             else:
                 button.click()
-                time.sleep(2)
+                time.sleep(3)
 
         return pd.DataFrame(reports_by_date)
         
