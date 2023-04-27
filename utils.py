@@ -103,10 +103,6 @@ def csv_to_postgres(file):
     
     cursor.execute(sql)
 
-    # f = open(file, 'r')
-    # data = list(csv.reader(f, delimiter=','))
-    # f.close()
-
     with open(file, 'r') as f:
         next(f)
         for line in f:
