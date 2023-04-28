@@ -13,7 +13,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-import psycopg2, csv
+import psycopg2, csv, tqdm
 
 class Webscraper():
     def __init__(self, location, season="Current Season", browser=webdriver.Chrome(), url='https://nwac.us/avalanche-forecast/#/archive'):
@@ -35,6 +35,7 @@ class Webscraper():
         # Finding season selection by XPATH:
         select_element = Select(self.browser.find_element(By.XPATH,'//*[@id="afp-forecast-widget"]/div/div/div[1]/div[1]/div/div[1]/div[1]/div[1]/select'))
         select_element.select_by_visible_text(self.season)
+        time.sleep(3)
     
     def scrape_report_page(self):
         """
@@ -85,6 +86,8 @@ class Webscraper():
         for i in range(len(data)):
             data[i] = re.sub(r'PROBLEM TYPE.*?SIZE', '', data[i], flags=re.DOTALL)
             data[i] = re.sub(r'THE BOTTOM LINE\n', '', data[i])
+            data[i] = re.sub(r'FORECAST DISCUSSION', '', data[i])
+            data[i] = re.sub(r'AVALANCHE PROBLEM #', '', data[i])
             data[i] = re.sub(r"\d+\s-\s.*", str(data[i].split(" - ")[0]), data[i])
             data[i] = data[i].replace("\n", "")
     
@@ -142,7 +145,7 @@ class Webscraper():
                 button.click()
                 time.sleep(3)
 
-        return pd.DataFrame(reports_by_date)
+        return pd.DataFrame(reports_by_date, columns=['date', 'zone', 'overall_risk', 'above_treeline_risk', 'near_treeline_risk', 'below_treeline_risk', 'bottom_line_text', 'problem_type_text', 'forecast_discussion_text'])
         
 
     def to_csv(self, data):
@@ -152,11 +155,10 @@ class Webscraper():
         pass
 
 if __name__ == '__main__':
-    # ws = Webscraper("All Zones")
-    ws = Webscraper("Snoqualmie Pass")
-    ws.open_archive_page()
-    reports_data = ws.scrape_daily_reports()
-    ws.to_csv(reports_data)
-    print("Uncomment Code to Run")
-
-
+    seasons = ["2021-22 Season", "2020-21 Season"]
+    
+    for season in seasons:
+        ws = Webscraper("All Zones", season)
+        ws.open_archive_page()
+        reports_data = ws.scrape_daily_reports()
+        # ws.to_csv(reports_data)
