@@ -4,14 +4,15 @@ Spring, 2023
 
 This file represents the webscraper for the Snowpack Analysis project.
 """
-import xmltodict, time
+import xmltodict, time, re
 from datetime import datetime
 import pandas as pd
 import bs4 as bs
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 import psycopg2, csv
 
 class Webscraper():
@@ -39,17 +40,21 @@ class Webscraper():
         """
         Scrapes the individual report pages for all of the text within the report.
         """
-        loaded = False
-        seconds_waited = 0
-        while loaded is False or seconds_waited > 10:
-            try:
-                above_treeline_risk = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")
-                loaded = True
-            except:
-                time.sleep(1)
-                seconds_waited += 1
-        if seconds_waited >= 10:
+        # loaded = False
+        # while loaded is False:
+        #     try:
+        #         above_treeline_risk = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")
+        #         loaded = True
+        #     except:
+        #         time.sleep(1)
+
+        try:
+            elem = WebDriverWait(self.browser, 10).until(
+                EC.presence_of_element_located((By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")) #This is a dummy element
+            )
+        except:
             return [None, None, None, None, None, None]
+            
         # Scraping the risk data:
         above_treeline_risk = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")
         above_treeline_risk = above_treeline_risk.text
@@ -68,13 +73,24 @@ class Webscraper():
         problem_type_headers = self.browser.find_elements(By.CLASS_NAME, 'nac-problem')
         problem_type_text = ""
         for header in problem_type_headers:
-            problem_type_text += header.find_element(By.CLASS_NAME, "nac-tinymce").text
+            av_problem = header.find_element(By.CLASS_NAME, "nac-tinymce")
+            narrow_av_problem = av_problem.find_element(By.CLASS_NAME, "nac-html-p")
+            problem_type_text += narrow_av_problem.text
+        # clean_problem_type_text = re.sub(r'PROBLEM TYPE.*?SIZE', '', problem_type_text, flags=re.DOTALL)
 
         forecast_discussion = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[3]")
         forecast_discussion_text = forecast_discussion.text
 
-        return [above_treeline_risk, near_treeline_risk, below_treeline_risk, bottom_line_text, problem_type_text, forecast_discussion_text]
+        data = [above_treeline_risk, near_treeline_risk, below_treeline_risk, bottom_line_text, problem_type_text, forecast_discussion_text]
+        for i in range(len(data)):
+            data[i] = re.sub(r'PROBLEM TYPE.*?SIZE', '', data[i], flags=re.DOTALL)
+            data[i] = re.sub(r'THE BOTTOM LINE\n', '', data[i])
+            data[i] = re.sub(r"\d+\s-\s.*", str(data[i].split(" - ")[0]), data[i])
+            data[i] = data[i].replace("\n", "")
     
+        return data
+
+
     def scrape_daily_reports(self):
         """
         Scrapes the daily reports from the avalanche.org archive and returns
@@ -82,13 +98,12 @@ class Webscraper():
         """  
         reports_by_date = []      
         while True:
-            loaded = False
-            while loaded is False:
-                try: 
-                    table = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[1]")
-                    loaded = True
-                except:
-                    time.sleep(1)
+            try:
+                elem = WebDriverWait(self.browser, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[1]"))
+                )
+            finally:
+                pass
             # Getting the table:
             table = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[1]")
             rows = table.find_elements(By.TAG_NAME, "tr")
@@ -131,7 +146,7 @@ class Webscraper():
         
 
     def to_csv(self, data):
-        data.to_csv('output_data/%s_%s_reports_data.csv'%(self.location, self.season.replace(" ", "_")), index=False)
+        data.to_csv('output_data/%s_%s_reports_data.csv'%(self.location.replace(" ", "_"), self.season.replace(" ", "_")), index=False)
 
     def to_postgres(self, data):
         pass
@@ -142,5 +157,6 @@ if __name__ == '__main__':
     ws.open_archive_page()
     reports_data = ws.scrape_daily_reports()
     ws.to_csv(reports_data)
+    print("Uncomment Code to Run")
 
 
