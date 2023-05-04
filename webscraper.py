@@ -41,14 +41,6 @@ class Webscraper():
         """
         Scrapes the individual report pages for all of the text within the report.
         """
-        # loaded = False
-        # while loaded is False:
-        #     try:
-        #         above_treeline_risk = self.browser.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")
-        #         loaded = True
-        #     except:
-        #         time.sleep(1)
-
         try:
             elem = WebDriverWait(self.browser, 10).until(
                 EC.presence_of_element_located((By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")) #This is a dummy element
@@ -161,4 +153,4 @@ if __name__ == '__main__':
         ws = Webscraper("All Zones", season)
         ws.open_archive_page()
         reports_data = ws.scrape_daily_reports()
-        # ws.to_csv(reports_data)
+        ws.to_csv(reports_data)

@@ -13,6 +13,15 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
 import psycopg2, csv
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+import gensim
+from gensim import corpora
+from gensim.utils import simple_preprocess
+import keys
+from meteostat import Stations, Daily, Point, Hourly
 
 def snowpilot_xml_to_dict(fname):
     """
@@ -25,62 +34,82 @@ def snowpilot_xml_to_dict(fname):
 
     return sp_xml['Pit_Observation']
 
-def scrape_avalanche_data(url, location):
+def combine_csv(f1, f2, f3):
     """
-    Scrapes the avalanche data from the avalanche.org website and returns a
-    dataframe with the data.
+    Combines f1 and f2 files into a new csv file, f3
     """
-    # Using Selenium to get the avalanche forecast data:
-    date_risks = []
+    with open(f1, 'r') as f:
+        reader = csv.reader(f)
+        data1 = list(reader)
 
-    browser = webdriver.Chrome()
-    url = 'https://nwac.us/avalanche-forecast/#/archive'
-    browser.get(url)
-    # Finding by XPATH:
-    select_element = Select(browser.find_element(By.XPATH,'//*[@id="afp-forecast-widget"]/div/div/div[1]/div[1]/div/div[1]/div[2]/div[2]/select'))
-    # Selecting Snoqualmie Pass from dropdown menu:
-    select_element.select_by_visible_text(location)
+    with open(f2, 'r') as f:
+        reader = csv.reader(f)
+        data2 = list(reader)
 
-    response = browser.page_source
+    data = data1 + data2
 
-    soup = bs.BeautifulSoup(response, 'html.parser')
+    with open(f3, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerows(data)
 
-    prediction_table = soup.find_all('tr', {'class': 'VueTables__row'})
-    for row in prediction_table:
-        date = row.find_all('td')[0].text
-        org_date = datetime.strptime(date, '%b %d, %Y')
-        new_date = datetime.strftime(org_date, '%Y-%m-%d')
-        new_date = datetime.strptime(new_date, '%Y-%m-%d')
-        date_risks.append([new_date, row.find_all('td')[5].text])
 
-    select_element = browser.find_element(By.XPATH,'//*[@id="afp-forecast-widget"]/div/div/div[1]/div[2]/div[2]/nav/ul/li[4]/a')
-    select_element.click()
-
-    response = browser.page_source
-
-    soup = bs.BeautifulSoup(response, 'html.parser')
-
-    prediction_table = soup.find_all('tr', {'class': 'VueTables__row'})
-    for row in prediction_table:
-        date = row.find_all('td')[0].text
-        org_date = datetime.strptime(date, '%b %d, %Y')
-        new_date = datetime.strftime(org_date, '%Y-%m-%d')
-        new_date = datetime.strptime(new_date, '%Y-%m-%d')
-        date_risks.append([new_date, row.find_all('td')[5].text])
-
-    browser.quit()
-
-    date_risks = pd.DataFrame(date_risks, columns=['time', 'risk'])
+def preprocess_text_column(text):
+    stop_words = set(stopwords.words('english'))
+    # adding days of the week to stop words
+    stop_words.update(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])
+    # adding months to stop words
+    stop_words.update(['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+                       'september', 'october', 'november', 'december'])
+    lemmatizer = WordNetLemmatizer()
     
-    return date_risks
+    words = word_tokenize(text.lower())
+    words = [w for w in words if not w in stop_words]
+    words = [lemmatizer.lemmatize(w) for w in words]
+    words = simple_preprocess(str(words), deacc=True)
+    
+    return words
 
-def csv_to_postgres(file):
+def prepare_text_column(column):
+    """
+    Prepares a text column for LDA analysis.
+    """
+    column = [str(item) for item in column]
+    processed = [preprocess(doc) for doc in column]
+
+    # Create a dictionary of terms and their frequency
+    dictionary = corpora.Dictionary(processed)
+
+    # Create a document-term matrix
+    doc_term_matrix = [dictionary.doc2bow(doc) for doc in processed]
+
+    return doc_term_matrix, dictionary
+
+
+def clean_raw_webscraper_data(fname):
+    """
+    Takes in a file of raw avalanche reports data from the webscraper, and returns a dataframe of the cleaned
+    """
+    # Reading in the CSV file:
+    all_data = pd.read_csv('output_data/incomplete_All_Zones_Current_Season_reports_data.csv')
+    # Adding Column Names:
+    all_data.columns = columns=['date', 'zone', 'overall_risk', 'above_treeline_risk', 'near_treeline_risk', 'below_treeline_risk', 'bottom_line_text', 'problem_type_text', 'forecast_discussion_text']
+    # Adding a column for the combined text of all 3 text columns:
+    all_data['combined_text'] = all_data['bottom_line_text'] + all_data['problem_type_text'] + all_data['forecast_discussion_text']
+
+def collect_weather_data(station, start_date, end_date):
+    """
+    Uses Meteostat to collect weather data of a given station between two dates.
+    """
+    return None
+
+    
+
+def dataframe_to_postgres(df, table_name):
     """
     Converts the csv files to a postgres database.
     """
-    conn = psycopg2.connect("dbname='snowpackprediction' user='jaymin' host='localhost' password='password'")
-    # ['temp', 'dwpt', 'rhum', 'prcp', 'wdir', 'wspd', 'pres', 'coco']]
-    conn.autocommit = True
+    return None
+    conn = psycopg2.connect("dbname=%s user=%s host=%s password=%s"%(keys.POSTGRESQL_ADDON_DB, keys.POSTGRESQL_ADDON_USER, keys.POSTGRESQL_ADDON_HOST, keys.POSTGRESQL_ADDON_PASSWORD))
     cursor = conn.cursor()
 
     sql0 = """DROP TABLE IF EXISTS weather_data;"""
@@ -113,13 +142,6 @@ def csv_to_postgres(file):
             sql2 = """INSERT INTO weather_data VALUES (%s);"""%(line)
             # sql2 = """INSERT INTO weather_data VALUES ;"""%(list)
             cursor.execute(sql2)
-
-    # sql3 = """select * from weather_data;"""
-
-    # cursor.execute(sql3)
-
-    # for i in cursor.fetchall():
-        # print(i)
     
     conn.commit()
     conn.close()
