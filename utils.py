@@ -95,12 +95,67 @@ def clean_raw_webscraper_data(fname):
     all_data.columns = columns=['date', 'zone', 'overall_risk', 'above_treeline_risk', 'near_treeline_risk', 'below_treeline_risk', 'bottom_line_text', 'problem_type_text', 'forecast_discussion_text']
     # Adding a column for the combined text of all 3 text columns:
     all_data['combined_text'] = all_data['bottom_line_text'] + all_data['problem_type_text'] + all_data['forecast_discussion_text']
+    # Converting date column to datetime:
+    all_data['date'] = pd.to_datetime(all_data['date'])
+    # Converting all text columns to lowercase:
+    all_data['bottom_line_text'] = all_data['bottom_line_text'].str.lower()
+    all_data['problem_type_text'] = all_data['problem_type_text'].str.lower()
+    all_data['forecast_discussion_text'] = all_data['forecast_discussion_text'].str.lower()
+    all_data['combined_text'] = all_data['combined_text'].str.lower()
+    all_data['zone'] = all_data['zone'].str.lower()
+    all_data['overall_risk'] = all_data['overall_risk'].str.lower()
 
-def collect_weather_data(station, start_date, end_date):
+
+    return all_data
+
+def get_weather_from_location(location, start, end=None):
     """
-    Uses Meteostat to collect weather data of a given station between two dates.
+    Gathers weather data from the Meteostat API for a given location and time period.
     """
-    return None
+    stations = Stations()
+    station = stations.nearby(location[0], location[1], 120000)
+    station = station.fetch()
+
+    # If no end date is given, use start date to just get single date data
+    if end is None:
+        end = start
+
+    weather_data = Daily(station, start=start, end=end)
+    weather_data = weather_data.normalize()
+    weather_data = weather_data.aggregate('1D', spatial=True) # Aggregating data over time and spatialy (averaging all stations' data)
+    weather_data = weather_data.fetch()
+    
+    # Removing empty columns:
+    weather_data = weather_data[['tavg', 'tmin', 'tmax', 'prcp', 'snow', 'wdir', 'pres', 'tsun']]
+    weather_data = weather_data.reset_index()
+    
+    return weather_data
+
+def add_weather_to_reports(reports_df, centers_dict=None):
+    """
+    Creates a new dataframe with weather data added to the reports dataframe.
+    """
+    if centers_dict is None:
+        # The centers dict for all the NWAC stations:
+        centers_dict = {
+            'olympics': (47.7795, -123.39750000000001),
+            'west slopes north': (48.735552, -121.560974),
+            'east slopes north': (48.410495499999996, -120.53237949999999),
+            'west slopes central': (48.142828, -121.613846),
+            'east slopes central': (47.92624, -121.04461699999999),
+            'stevens pass': (47.721148, -121.1483),
+            'snoqualmie pass': (47.3921515, -121.4380645),
+            'west slopes south': (46.9136095, -121.898804),
+            'east slopes south': (46.8361025, -121.324768),
+            'mt hood': (45.3659035, -121.7367555)
+        }
+
+    new_df = pd.DataFrame()
+    for index, row in reports_df.iterrows():
+        weather_data = get_weather_from_location(centers_dict[row['zone']], row['date'])
+        new_row = pd.concat([row, weather_data], axis=1)
+        new_df = pd.concat([new_df, new_row])
+    return new_df
 
     
 
