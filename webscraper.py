@@ -147,7 +147,7 @@ class Webscraper():
         pass
 
 if __name__ == '__main__':
-    seasons = ["2021-22 Season", "2020-21 Season"]
+    seasons = ["Current Season", "2020-21 Season"]
     
     for season in seasons:
         ws = Webscraper("All Zones", season)
