@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # Set a title for your app
 st.title("Sample Streamlit App")
@@ -21,5 +21,5 @@ if button_clicked:
     st.write(df)
 
     # Create a scatter plot using matplotlib
-    plt.scatter(df["X"], df["Y"])
-    st.pyplot(plt)
+    # plt.scatter(df["X"], df["Y"])
+    # st.pyplot(plt)
