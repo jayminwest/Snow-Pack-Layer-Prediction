@@ -22,6 +22,7 @@ from gensim import corpora
 from gensim.utils import simple_preprocess
 import keys
 from meteostat import Stations, Daily, Point, Hourly
+from sqlalchemy import create_engine
 
 def combine_csv(f1, f2, f3):
     """
@@ -94,7 +95,6 @@ def clean_raw_webscraper_data(fname):
     text_coloumns = ['bottom_line_text', 'problem_type_text', 'forecast_discussion_text', 'combined_text']
     
     for column in text_coloumns:
-        print(column)
         all_data[column] = all_data[column].apply(preprocess_text_column)
 
     all_data['zone'] = all_data['zone'].str.lower()
@@ -187,44 +187,60 @@ def get_weather_from_location(location, start, end=None):
     
     return weather_data
 
-def dataframe_to_postgres(df, table_name):
+def dataframe_to_postgres(df, table_name=None):
     """
     Converts the csv files to a postgres database.
     """
-    return None
-    conn = psycopg2.connect("dbname=%s user=%s host=%s password=%s"%(keys.POSTGRESQL_ADDON_DB, keys.POSTGRESQL_ADDON_USER, keys.POSTGRESQL_ADDON_HOST, keys.POSTGRESQL_ADDON_PASSWORD))
-    cursor = conn.cursor()
+    # Create the SQLAlchemy engine
+    engine = create_engine(f'postgresql://{keys.POSTGRESQL_ADDON_USER}:{keys.POSTGRESQL_ADDON_PASSWORD}@{keys.POSTGRESQL_ADDON_HOST}:{keys.POSTGRESQL_ADDON_PORT}/{keys.POSTGRESQL_DB}')
 
-    sql0 = """DROP TABLE IF EXISTS weather_data;"""
+    # Insert DataFrame into PostgreSQL table
+    df.to_sql(table_name, engine, if_exists='replace', index=False)
 
-    cursor.execute(sql0)
-
-    sql = """CREATE TABLE weather_data (
-        time varchar(20),
-        temp float,
-        dwpt float,
-        rhum float,
-        prcp float,
-        wdir float,
-        wspd float,
-        pres float,
-        coco float,
-        risk integer
-        );
-        """
+    # Close the database connection
+    engine.dispose()
     
-    cursor.execute(sql)
+    # return None
+    # conn = psycopg2.connect("dbname=%s user=%s host=%s password=%s"%(keys.POSTGRESQL_ADDON_DB, keys.POSTGRESQL_ADDON_USER, keys.POSTGRESQL_ADDON_HOST, keys.POSTGRESQL_ADDON_PASSWORD))
+    # cursor = conn.cursor()
 
-    with open(file, 'r') as f:
-        next(f)
-        for line in f:
-            list = line.split(',')
-            print(list[1:])
-            # line = str(list[1:])
-            line = ','.join(list[1:])
-            sql2 = """INSERT INTO weather_data VALUES (%s);"""%(line)
-            # sql2 = """INSERT INTO weather_data VALUES ;"""%(list)
-            cursor.execute(sql2)
+    # sql0 = """DROP TABLE IF EXISTS current_season;"""
+
+    # cursor.execute(sql0)
+
+    # sql = """CREATE TABLE current_season (
+    #     date varchar(20),
+    #     zone SHORTTEXT,
+    #     overall_risk float,
+    #     above_treeline_risk float,
+    #     near_treeline_risk float,
+    #     below_treeline_risk float,
+    #     bottom_line_text TEXT,
+    #     problem_type_text TEXT,
+    #     forecast_discussion_text TEXT,
+    #     combined_text TEXT,
+    #     tavg float,
+    #     tmin float,
+    #     tmax float,
+    #     prcp float,
+    #     wdir float,
+    #     pres float,
+    #     tsun float
+    #     );
+    #     """
     
-    conn.commit()
-    conn.close()
+    # cursor.execute(sql)
+
+    # with open(file, 'r') as f:
+    #     next(f)
+    #     for line in f:
+    #         list = line.split(',')
+    #         print(list[1:])
+    #         # line = str(list[1:])
+    #         line = ','.join(list[1:])
+    #         sql2 = """INSERT INTO weather_data VALUES (%s);"""%(line)
+    #         # sql2 = """INSERT INTO weather_data VALUES ;"""%(list)
+    #         cursor.execute(sql2)
+    
+    # conn.commit()
+    # conn.close()
