@@ -77,7 +77,6 @@ def prepare_text_column(column):
 
     return doc_term_matrix, dictionary
 
-
 def clean_raw_webscraper_data(fname):
     """
     Takes in a file of raw avalanche reports data from the webscraper, and returns a dataframe of the cleaned
