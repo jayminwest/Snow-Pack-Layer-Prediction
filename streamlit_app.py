@@ -1,6 +1,6 @@
 import streamlit as st
 import datetime
-import streamlit_utils
+import utils
 
 # Set page configuration
 st.set_page_config(page_title="Streamlit App", layout="wide")
@@ -222,13 +222,13 @@ def render_forecast_discussion():
     text_input = st.text_area("Enter Avalanche Query for %s:"%(datetime.date.today().strftime("%B %d, %Y")))
     if st.button("Submit"):
         # Pass the API key to the custom Langchain Model
-        llm_output = streamlit_utils.get_llm_prediction(api_key, text_input)
+        llm_output = utils.get_llm_prediction(api_key, text_input)
         st.write("Output:", llm_output)
 
     st.title("Find Most Similar Word: ")
     word_input = st.text_input("Enter Word:")
     if st.button("Submit Word"):
-        similar_words = streamlit_utils.find_most_similar_words(word_input)
+        similar_words = utils.find_most_similar_words(word_input)
         st.write("Most Similar Words By Embeddings:", similar_words)
         
 # Create navigation menu
