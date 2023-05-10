@@ -4,7 +4,6 @@ Spring, 2023
 
 This file contains utility functions for the Snowpack Analysis project.
 """
-import xmltodict
 from datetime import datetime
 import pandas as pd
 import bs4 as bs
@@ -12,18 +11,14 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
-import psycopg2, csv
-import nltk
+import csv
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-import gensim
 from gensim import corpora
 from gensim.utils import simple_preprocess
 import keys
-from meteostat import Stations, Daily, Point, Hourly
-from sqlalchemy import create_engine
-import keys
+from meteostat import Stations, Daily
 from langchain import VectorDBQA, OpenAI
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
