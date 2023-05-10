@@ -149,7 +149,7 @@ def render_overview():
     st.markdown("**The output here can be see using the custom embedding data as it uses terms like 'near treeline' and 'south-facing slopes' which would not be present in the default GPT model.**")
 
     st.markdown("### Additional Steps:")
-    st.markdown("**Creating an LSTM: ")
+    st.markdown("**Creating an LSTM:**")
     st.code("""
         import pandas as pd
         import numpy as np
@@ -214,7 +214,7 @@ def render_overview():
 
     """)
 
-    st.markdown("**Model Performance: **")
+    st.markdown("**Model Performance:**")
     HtmlFile = open("loss_plot.html", 'r', encoding='utf-8')
     source_code = HtmlFile.read() 
     components.html(source_code, height=700, width=700)
@@ -232,7 +232,7 @@ def render_forecast_discussion():
         llm_output = utils.get_llm_prediction(api_key, text_input)
         st.write("Output:", llm_output)
 
-    st.title("Find Most Similar Word: ")
+    st.title("Find Most Similar Words: ")
     word_input = st.text_input("Enter Word:")
     if st.button("Submit Word"):
         similar_words = utils.find_most_similar_words(word_input)

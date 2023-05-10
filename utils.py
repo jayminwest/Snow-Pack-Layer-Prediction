@@ -190,7 +190,7 @@ def get_llm_prediction(api_key, query):
     """
     Uses the OpenAI api and the vector db on user's text
     """
-    # api_key = keys.OPENAI_KEY # Uncomment
+    api_key = keys.OPENAI_KEY # Uncomment
     # Loading the data:
     all_data = pd.read_csv('output_data/all_zones_all_data.csv')
     all_data = all_data.drop(columns=['bottom_line_text', 'problem_type_text', 'forecast_discussion_text'])
@@ -224,7 +224,7 @@ def get_llm_prediction(api_key, query):
     return results
 
 def find_most_similar_words(word):
-    all_zones_df = pd.read_csv('input_data/Stevens_Pass_Current_Season_reports_data.csv')
+    all_zones_df = pd.read_csv('output_data/all_zones_all_data.csv')
 
     data = all_zones_df.drop(columns=['bottom_line_text', 'problem_type_text', 'forecast_discussion_text'])
     
@@ -233,9 +233,6 @@ def find_most_similar_words(word):
     data.rename(columns={'combined_text': 'tokens'}, inplace=True)
     # Training the word to vec model:
     model = Word2Vec(sentences=data['tokens'], vector_size=100, window=5, min_count=1, workers=4)
-    model.save('models/first_word2vec.model')
-
-    model = Word2Vec.load('models/first_word2vec.model')
     # Create word embeddings lookup dictionary
     word_embeddings = {}
 
