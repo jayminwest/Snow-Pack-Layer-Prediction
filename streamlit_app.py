@@ -1,6 +1,6 @@
 import streamlit as st
 import datetime
-import utils
+import streamlit_utils
 
 # Set page configuration
 st.set_page_config(page_title="Streamlit App", layout="wide")
@@ -143,7 +143,7 @@ def render_overview():
     results = qa.run(query)
     print(results)
     """)
-    
+
     st.markdown("*Output: The avalanche risk is expected to increase over the next week at Steven's Pass, as warm and stormy weather will impact the area. Light rain and wet snow will fall on a primarily dry snowpack, and there is a greatest likelihood of encountering loose wet avalanches on south-facing slopes near treeline. Small wind slabs could still present a risk on steep exposed terrain, and there is a chance that an isolated terrain feature could sporadically release a glide avalanche. To minimize the risk, it is important to check the forecast, evaluate the conditions of the day, and make observations as you travel in the area. It is also important to avoid travel on steep terrain, choose terrain based on options that minimize exposure to loose wet avalanches, and find a thick crust topping the snow surface.*")
     st.markdown("**The output here can be see using the custom embedding data as it uses terms like 'near treeline' and 'south-facing slopes' which would not be present in the default GPT model.**")
 
@@ -222,13 +222,13 @@ def render_forecast_discussion():
     text_input = st.text_area("Enter Avalanche Query for %s:"%(datetime.date.today().strftime("%B %d, %Y")))
     if st.button("Submit"):
         # Pass the API key to the custom Langchain Model
-        llm_output = utils.get_llm_prediction(api_key, text_input)
+        llm_output = streamlit_utils.get_llm_prediction(api_key, text_input)
         st.write("Output:", llm_output)
 
     st.title("Find Most Similar Word: ")
     word_input = st.text_input("Enter Word:")
     if st.button("Submit Word"):
-        similar_words = utils.find_most_similar_words(word_input)
+        similar_words = streamlit_utils.find_most_similar_words(word_input)
         st.write("Most Similar Words By Embeddings:", similar_words)
         
 # Create navigation menu
