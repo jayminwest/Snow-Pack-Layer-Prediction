@@ -143,9 +143,75 @@ def render_overview():
     results = qa.run(query)
     print(results)
     """)
+    
     st.markdown("*Output: The avalanche risk is expected to increase over the next week at Steven's Pass, as warm and stormy weather will impact the area. Light rain and wet snow will fall on a primarily dry snowpack, and there is a greatest likelihood of encountering loose wet avalanches on south-facing slopes near treeline. Small wind slabs could still present a risk on steep exposed terrain, and there is a chance that an isolated terrain feature could sporadically release a glide avalanche. To minimize the risk, it is important to check the forecast, evaluate the conditions of the day, and make observations as you travel in the area. It is also important to avoid travel on steep terrain, choose terrain based on options that minimize exposure to loose wet avalanches, and find a thick crust topping the snow surface.*")
     st.markdown("**The output here can be see using the custom embedding data as it uses terms like 'near treeline' and 'south-facing slopes' which would not be present in the default GPT model.**")
 
+    st.markdwon("### Additional Steps:")
+    st.markdown("**Creating an LSTM: ")
+    st.code("""
+        import pandas as pd
+        import numpy as np
+        from sklearn.preprocessing import MinMaxScaler
+        from tensorflow.keras.models import Sequential
+        from tensorflow.keras.layers import LSTM, Dense, Embedding
+        from tensorflow.keras.preprocessing.text import Tokenizer
+        from tensorflow.keras.preprocessing.sequence import pad_sequences
+        from gensim.models import Word2Vec
+        from bokeh.plotting import figure, show, output_file
+
+        # Load the dataframe
+        # df = pd.read_csv('your_dataframe.csv')
+        df = data
+
+        # Select the features you want to use for training
+        features = ['tavg', 'tmin', 'tmax', 'prcp', 'wdir', 'pres', 'tsun']
+
+        # Preprocess the data
+        scaler = MinMaxScaler()
+        df[features] = scaler.fit_transform(df[features])  # Normalize the numerical features
+
+        # Convert text tokens to numerical sequences
+        tokenizer = Tokenizer()
+        tokenizer.fit_on_texts(df['tokens'])
+
+        sequences = tokenizer.texts_to_sequences(df['tokens'])
+        max_seq_length = max(len(seq) for seq in sequences)
+        sequences = pad_sequences(sequences, maxlen=max_seq_length)
+
+        tokenized_text = [str(tokens).split() for tokens in df['tokens']]
+        # Train Word2Vec embeddings
+        model = Word2Vec(sentences=tokenized_text, vector_size=50, window=7, min_count=7, workers=10)
+
+        # Save the trained model
+        model.save('models/first_word2vec.model')
+
+        # Load pre-trained word embeddings (Word2Vec or GloVe)
+        word_embeddings = Word2Vec.load('models/first_word2vec.model').wv
+
+        # Create an embedding matrix
+        embedding_dim = word_embeddings.vector_size
+        vocab_size = len(tokenizer.word_index) + 1
+        embedding_matrix = np.zeros((vocab_size, embedding_dim))
+        for word, i in tokenizer.word_index.items():
+            if word in word_embeddings.key_to_index:
+                embedding_matrix[i] = word_embeddings[word]
+
+        # Prepare the input and output data
+        X = sequences
+        y = df['overall_risk'].values
+
+        # Define the LSTM model
+        model = Sequential()
+        model.add(Embedding(vocab_size, embedding_dim, weights=[embedding_matrix], input_length=max_seq_length, trainable=False))
+        model.add(LSTM(16))
+        model.add(Dense(1, activation='linear'))
+
+        # Compile and train the model
+        model.compile(loss='mean_squared_error', optimizer='adam')
+        model.fit(X, y, epochs=20, batch_size=8)
+
+    """)
 
 
 # Define the function to render the Forecast Discussion page
@@ -158,6 +224,12 @@ def render_forecast_discussion():
         # Pass the API key to the custom Langchain Model
         llm_output = utils.get_llm_prediction(api_key, text_input)
         st.write("Output:", llm_output)
+
+    st.title("Find Most Similar Word: ")
+    word_input = st.text_input("Enter Word:")
+    if st.button("Submit Word"):
+        similar_words = utils.find_most_similar_words(word_input)
+        st.write("Most Similar Words By Embeddings:", similar_words)
         
 # Create navigation menu
 pages = ["Overview", "Forecast Discussion"]
