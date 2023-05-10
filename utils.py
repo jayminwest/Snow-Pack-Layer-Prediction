@@ -6,10 +6,6 @@ This file contains utility functions for the Snowpack Analysis project.
 """
 from datetime import datetime
 import pandas as pd
-import bs4 as bs
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
-from selenium.webdriver.common.by import By
 import csv
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
