@@ -23,6 +23,14 @@ from gensim.utils import simple_preprocess
 import keys
 from meteostat import Stations, Daily, Point, Hourly
 from sqlalchemy import create_engine
+import keys
+from langchain import VectorDBQA, OpenAI
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.vectorstores import Pinecone
+from langchain.document_loaders import DataFrameLoader
+import pandas as pd
+import pinecone
 
 def combine_csv(f1, f2, f3):
     """
@@ -186,60 +194,39 @@ def get_weather_from_location(location, start, end=None):
     
     return weather_data
 
-def dataframe_to_postgres(df, table_name=None):
+def get_llm_prediction(api_key, query):
     """
-    Converts the csv files to a postgres database.
+    Uses the OpenAI api and the vector db on user's text
     """
-    # Create the SQLAlchemy engine
-    engine = create_engine(f'postgresql://{keys.POSTGRESQL_ADDON_USER}:{keys.POSTGRESQL_ADDON_PASSWORD}@{keys.POSTGRESQL_ADDON_HOST}:{keys.POSTGRESQL_ADDON_PORT}/{keys.POSTGRESQL_DB}')
+    api_key = keys.OPENAI_KEY # Uncomment
+    # Loading the data:
+    all_data = pd.read_csv('output_data/all_zones_all_data.csv')
+    all_data = all_data.drop(columns=['bottom_line_text', 'problem_type_text', 'forecast_discussion_text'])
+    all_data = all_data.dropna()
 
-    # Insert DataFrame into PostgreSQL table
-    df.to_sql(table_name, engine, if_exists='replace', index=False)
+    # Loading the data:
+    loader = DataFrameLoader(all_data, 'combined_text')
+    documents = loader.load()
+    # Initializing
+    # Splitting the data:
+    text_splitter = CharacterTextSplitter(chunk_size=100, chunk_overlap=10)
+    docs = text_splitter.split_documents(documents)
 
-    # Close the database connection
-    engine.dispose()
-    
-    # return None
-    # conn = psycopg2.connect("dbname=%s user=%s host=%s password=%s"%(keys.POSTGRESQL_ADDON_DB, keys.POSTGRESQL_ADDON_USER, keys.POSTGRESQL_ADDON_HOST, keys.POSTGRESQL_ADDON_PASSWORD))
-    # cursor = conn.cursor()
+    # Getting the embeddings:
+    embeddings = OpenAIEmbeddings(openai_api_key=api_key)
 
-    # sql0 = """DROP TABLE IF EXISTS current_season;"""
+    # Using Pinecone as the vectorstore:
+    pinecone.init(api_key=keys.PINECONE_KEY, environment='us-west1-gcp-free')
+    index_name = "avalanche-reports"
+    docsearch = Pinecone.from_documents(docs, embeddings, index_name=index_name)
 
-    # cursor.execute(sql0)
+    llm = OpenAI(openai_api_key=api_key)
+    qa = VectorDBQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        vectorstore=docsearch,
+        return_source_documents=False
+    )
 
-    # sql = """CREATE TABLE current_season (
-    #     date varchar(20),
-    #     zone SHORTTEXT,
-    #     overall_risk float,
-    #     above_treeline_risk float,
-    #     near_treeline_risk float,
-    #     below_treeline_risk float,
-    #     bottom_line_text TEXT,
-    #     problem_type_text TEXT,
-    #     forecast_discussion_text TEXT,
-    #     combined_text TEXT,
-    #     tavg float,
-    #     tmin float,
-    #     tmax float,
-    #     prcp float,
-    #     wdir float,
-    #     pres float,
-    #     tsun float
-    #     );
-    #     """
-    
-    # cursor.execute(sql)
-
-    # with open(file, 'r') as f:
-    #     next(f)
-    #     for line in f:
-    #         list = line.split(',')
-    #         print(list[1:])
-    #         # line = str(list[1:])
-    #         line = ','.join(list[1:])
-    #         sql2 = """INSERT INTO weather_data VALUES (%s);"""%(line)
-    #         # sql2 = """INSERT INTO weather_data VALUES ;"""%(list)
-    #         cursor.execute(sql2)
-    
-    # conn.commit()
-    # conn.close()
+    results = qa.run(query)
+    return results

@@ -43,7 +43,7 @@ class Webscraper():
         """
         try:
             elem = WebDriverWait(self.browser, 10).until(
-                EC.presence_of_element_located((By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")) #This is a dummy element
+                EC.presence_of_element_located((By.XPATH, "/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div/div[4]/div[1]/div/div[1]/div[1]/div[1]/div/div[1]/span[2]")) 
             )
         except:
             return [None, None, None, None, None, None]
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     seasons = ["Current Season", "2020-21 Season"]
     
     for season in seasons:
-        ws = Webscraper("All Zones", season)
+        ws = Webscraper("Stevens Pass", season)
         ws.open_archive_page()
         reports_data = ws.scrape_daily_reports()
         ws.to_csv(reports_data)
