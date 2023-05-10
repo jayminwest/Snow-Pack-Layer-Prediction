@@ -1,6 +1,7 @@
 import streamlit as st
 import datetime
 import utils
+import streamlit.components.v1 as components
 
 # Set page configuration
 st.set_page_config(page_title="Streamlit App", layout="wide")
@@ -147,7 +148,7 @@ def render_overview():
     st.markdown("*Output: The avalanche risk is expected to increase over the next week at Steven's Pass, as warm and stormy weather will impact the area. Light rain and wet snow will fall on a primarily dry snowpack, and there is a greatest likelihood of encountering loose wet avalanches on south-facing slopes near treeline. Small wind slabs could still present a risk on steep exposed terrain, and there is a chance that an isolated terrain feature could sporadically release a glide avalanche. To minimize the risk, it is important to check the forecast, evaluate the conditions of the day, and make observations as you travel in the area. It is also important to avoid travel on steep terrain, choose terrain based on options that minimize exposure to loose wet avalanches, and find a thick crust topping the snow surface.*")
     st.markdown("**The output here can be see using the custom embedding data as it uses terms like 'near treeline' and 'south-facing slopes' which would not be present in the default GPT model.**")
 
-    st.markdwon("### Additional Steps:")
+    st.markdown("### Additional Steps:")
     st.markdown("**Creating an LSTM: ")
     st.code("""
         import pandas as pd
@@ -212,6 +213,12 @@ def render_overview():
         model.fit(X, y, epochs=20, batch_size=8)
 
     """)
+
+    st.markdown("**Model Performance: **")
+    HtmlFile = open("loss_plot.html", 'r', encoding='utf-8')
+    source_code = HtmlFile.read() 
+    components.html(source_code, height=700, width=700)
+
 
 
 # Define the function to render the Forecast Discussion page
