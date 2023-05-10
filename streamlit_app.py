@@ -1,6 +1,6 @@
 import streamlit as st
 import datetime
-import keys, utils
+import utils
 
 # Set page configuration
 st.set_page_config(page_title="Streamlit App", layout="wide")
